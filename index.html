@@ -3,70 +3,115 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>You're invited</title>
+<title>Grace Invasion — iBUILD 2026</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap" rel="stylesheet" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,600;9..144,700&display=swap" rel="stylesheet" />
 <style>
   :root {
-    --navy: #1b2430;
-    --navy-deep: #141b24;
-    --paper: #f6f4ee;
-    --ink: #21252b;
-    --gold: #c9a24b;
-    --gold-deep: #a97e2b;
-    --muted: #7c7f86;
-    --green: #3f6b4f;
+    --bg: #f3f5ef;
+    --paper: #ffffff;
+    --ink: #1c2413;
+    --deep-green: #16260e;
+    --deep-green-2: #0d1608;
+    --lime: #8bc53f;
+    --lime-deep: #6ba52a;
+    --muted: #6b7062;
     --danger: #a33f3f;
   }
   * { box-sizing: border-box; }
   body {
     margin: 0;
     min-height: 100vh;
-    background: radial-gradient(circle at 30% 0%, var(--navy) 0%, var(--navy-deep) 65%);
+    background: var(--bg);
     font-family: 'Inter', system-ui, sans-serif;
-    color: var(--paper);
+    color: var(--ink);
     display: flex;
     flex-direction: column;
     align-items: center;
     padding: 24px;
   }
   .wrap { width: 100%; max-width: 460px; flex: 1; display: flex; flex-direction: column; justify-content: center; }
+
+  .brandline {
+    text-align: center;
+    font-size: 12.5px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    color: var(--lime-deep);
+    text-transform: uppercase;
+    margin: 0 0 6px;
+  }
   h1 {
     font-family: 'Fraunces', Georgia, serif;
-    font-weight: 600;
-    font-size: 40px;
-    line-height: 1.1;
-    margin: 4px 0 18px;
-    color: var(--paper);
+    font-weight: 700;
+    font-size: 42px;
+    line-height: 1.02;
+    margin: 0 0 4px;
+    text-align: center;
+    color: var(--deep-green);
+    text-shadow: 3px 3px 0 var(--lime);
   }
-  .eventline { font-size: 15px; color: var(--gold); margin: 0; }
-  .greeting { font-size: 16px; line-height: 1.5; color: #d6d9e0; margin: 0 0 28px; }
+  .subtag {
+    text-align: center;
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--muted);
+    margin: 0 0 22px;
+  }
+  .subtag b { color: var(--deep-green); }
+
+  .info-bar {
+    display: flex;
+    background: var(--deep-green);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 20px;
+    gap: 8px;
+  }
+  .info-item { flex: 1; text-align: center; }
+  .info-label {
+    display: inline-block;
+    background: #fff;
+    color: var(--deep-green);
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    border-radius: 5px;
+    padding: 2px 8px;
+    margin-bottom: 6px;
+  }
+  .info-value {
+    display: block;
+    color: #fff;
+    font-size: 12.5px;
+    font-weight: 600;
+    line-height: 1.3;
+  }
 
   .card {
     background: var(--paper);
     color: var(--ink);
     border-radius: 14px;
-    padding: 34px 32px;
-    box-shadow: 0 24px 60px rgba(0,0,0,0.35);
+    padding: 30px 28px;
+    box-shadow: 0 18px 44px rgba(22,38,14,0.18);
   }
-  .card h1 { color: var(--ink); font-size: 32px; }
-  .card .greeting { color: #4b4e54; }
-  .card .eventline { color: var(--gold-deep); }
+  .card h2 { color: var(--deep-green); font-size: 22px; margin: 0 0 10px; font-family: 'Fraunces', Georgia, serif; }
+  .greeting { font-size: 15px; line-height: 1.5; color: #565c4d; margin: 0 0 24px; }
 
-  label { display: block; font-size: 13.5px; font-weight: 600; color: #55585e; margin: 0 0 6px; }
+  label { display: block; font-size: 13.5px; font-weight: 600; color: #4c5142; margin: 0 0 6px; }
   input[type="text"], input[type="tel"], input[type="email"], input[type="password"] {
     width: 100%;
     font-family: inherit;
     font-size: 15px;
     padding: 11px 13px;
-    border: 1px solid #d7d3c6;
+    border: 1px solid #d8dcd0;
     border-radius: 7px;
     background: #fff;
     color: var(--ink);
     margin-bottom: 16px;
   }
-  input:focus { outline: 2px solid var(--gold-deep); outline-offset: 1px; }
+  input:focus { outline: 2px solid var(--lime-deep); outline-offset: 1px; }
 
   .radio-group { display: flex; gap: 22px; margin-bottom: 20px; }
   .radio-option {
@@ -81,40 +126,39 @@
     padding: 14px;
     border: none;
     border-radius: 9px;
-    background: var(--gold-deep);
+    background: var(--lime-deep);
     color: #fff;
     font-size: 15px;
-    font-weight: 600;
+    font-weight: 700;
     cursor: pointer;
     font-family: inherit;
   }
-  button[type="submit"]:hover, .primary-btn:hover { background: #8f6a24; }
+  button[type="submit"]:hover, .primary-btn:hover { background: var(--deep-green); }
   button:disabled { opacity: 0.6; cursor: default; }
 
   .error { color: var(--danger); font-size: 13.5px; margin: -8px 0 14px; }
-  .success { color: var(--green); font-size: 13.5px; margin: -8px 0 14px; }
+  .success { color: #3f6b4f; font-size: 13.5px; margin: -8px 0 14px; }
 
   footer {
     width: 100%;
     max-width: 460px;
     text-align: center;
-    padding-top: 32px;
+    padding-top: 26px;
   }
   #admin-toggle {
     background: none;
     border: none;
-    color: #5b626f;
+    color: var(--muted);
     font-size: 12.5px;
     cursor: pointer;
     font-family: inherit;
     padding: 6px 10px;
   }
-  #admin-toggle:hover { color: #9aa0ad; }
+  #admin-toggle:hover { color: var(--deep-green); }
 
   #admin-panel {
     margin-top: 14px;
-    background: rgba(255,255,255,0.06);
-    border: 1px solid rgba(255,255,255,0.12);
+    background: var(--deep-green);
     border-radius: 10px;
     padding: 20px;
     text-align: left;
@@ -123,26 +167,44 @@
     font-family: 'Inter', sans-serif;
     font-size: 13px;
     font-weight: 600;
-    color: #c7ccd6;
+    color: #cfe0bf;
     margin: 0 0 14px;
     text-transform: none;
   }
   #admin-panel input { margin-bottom: 10px; }
   #admin-panel .error, #admin-panel .success { margin: -4px 0 10px; }
-  #admin-summary { color: #d6d9e0; font-size: 14px; margin: 0 0 14px; }
+  #admin-summary { color: #dbe6d1; font-size: 14px; margin: 0 0 14px; }
   #admin-signout {
-    background: none; border: none; color: #8890a0; font-size: 12.5px;
+    background: none; border: none; color: #a9baa0; font-size: 12.5px;
     cursor: pointer; font-family: inherit; margin-top: 10px; padding: 0;
   }
-  #admin-signout:hover { color: #c7ccd6; }
+  #admin-signout:hover { color: #dbe6d1; }
 </style>
 </head>
 <body>
 
 <main class="wrap">
+  <p class="brandline">Grace Season Community presents · iBUILD 2026</p>
+  <h1>GRACE<br />INVASION</h1>
+  <p class="subtag">Sat <b>14th November, 2026</b> · <b>8AM</b> · Living Grace Business Centre, Berlin Top – Sunyani</p>
+
+  <div class="info-bar">
+    <div class="info-item">
+      <span class="info-label">DATE</span>
+      <span class="info-value">Sat 14th<br />Nov 2026</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">VENUE</span>
+      <span class="info-value">Living Grace<br />Berlin Top</span>
+    </div>
+    <div class="info-item">
+      <span class="info-label">TIME</span>
+      <span class="info-value">8AM</span>
+    </div>
+  </div>
+
   <div class="card" id="register-card">
-    <p class="eventline">You're invited to</p>
-    <h1>Our Gathering</h1>
+    <h2>Reserve your spot</h2>
     <p class="greeting">Fill in your details below and we'll save your spot.</p>
 
     <form id="register-form">
@@ -170,7 +232,7 @@
   </div>
 
   <div class="card" id="thankyou-card" hidden>
-    <h1>You're all set</h1>
+    <h2>You're all set</h2>
     <p class="greeting" id="thankyou-message"></p>
   </div>
 </main>
@@ -203,6 +265,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
+  import { getAnalytics, isSupported as analyticsSupported } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-analytics.js";
   import {
     getFirestore, collection, addDoc, getDocs, serverTimestamp,
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
@@ -210,24 +273,22 @@
     getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut,
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-auth.js";
 
-  // =========================================================================
-  // Paste your Firebase project config here.
-  // Firebase console > Project settings > General > Your apps > SDK setup.
-  // This object is meant to be public — it just identifies the project.
-  // Access is actually controlled by Firestore security rules and Auth.
-  // =========================================================================
   const firebaseConfig = {
-    apiKey: "PASTE_ME",
-    authDomain: "PASTE_ME",
-    projectId: "PASTE_ME",
-    storageBucket: "PASTE_ME",
-    messagingSenderId: "PASTE_ME",
-    appId: "PASTE_ME",
+    apiKey: "AIzaSyBSA1Q9LzRe5B5CUuQVwEo8AECQ3DJpVV0",
+    authDomain: "ibc2026-a7c8c.firebaseapp.com",
+    projectId: "ibc2026-a7c8c",
+    storageBucket: "ibc2026-a7c8c.firebasestorage.app",
+    messagingSenderId: "45947699735",
+    appId: "1:45947699735:web:502613e5c998deb1515252",
+    measurementId: "G-0Z7Z6X11S0",
   };
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
   const auth = getAuth(app);
+
+  // Analytics only works in a real browser over https, so guard it.
+  analyticsSupported().then((ok) => { if (ok) getAnalytics(app); });
 
   // ---- Registration form ----
   const registerForm = document.getElementById('register-form');
@@ -261,7 +322,7 @@
         createdAt: serverTimestamp(),
       });
       thankyouMessage.textContent = attending === 'yes'
-        ? `Thanks for registering, ${name}. See you there!`
+        ? `Thanks for registering, ${name}. See you at Grace Invasion!`
         : `Thanks for letting us know, ${name}. Sorry you can't make it!`;
       registerCard.hidden = true;
       thankyouCard.hidden = false;
@@ -289,8 +350,6 @@
     adminPanel.hidden = !adminPanel.hidden;
   });
 
-  // Auth state (and therefore which admin view shows) is tracked continuously,
-  // so a signed-in admin stays signed in across page reloads too.
   onAuthStateChanged(auth, (user) => {
     if (user) {
       adminLoginView.hidden = true;
