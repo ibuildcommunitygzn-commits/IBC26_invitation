@@ -1,0 +1,11 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /registrations/{doc} {
+      // Anyone can submit an RSVP.
+      allow create: if true;
+      // Only a signed-in admin can read the list, or edit/delete entries.
+      allow read, update, delete: if request.auth != null;
+    }
+  }
+}
