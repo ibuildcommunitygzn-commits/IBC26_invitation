@@ -267,7 +267,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import { getAnalytics, isSupported as analyticsSupported } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-analytics.js";
   import {
-    getFirestore, collection, addDoc, getDocs, serverTimestamp,
+    getFirestore, collection, addDoc, updateDoc, getDocs, serverTimestamp,
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
   import {
     getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut,
@@ -290,47 +290,84 @@
   // Analytics only works in a real browser over https, so guard it.
   analyticsSupported().then((ok) => { if (ok) getAnalytics(app); });
 
-  // ---- mNotify SMS ----
-  const MNOTIFY_API_KEY = 'oGi5oraSVaAqHZ2KUD4h8QZjm';
-  const MNOTIFY_SENDER_ID = 'IBC2026';
+  /* ============================================================
+     SMS — thank-you text via mNotify
+     ------------------------------------------------------------
+     Called directly from the browser, same as Clyde Academy's fee
+     SMS. NOTE: this means the API key is visible to anyone who
+     views this page's source, and mNotify's API may reject direct
+     browser requests (CORS/WAF) depending on their current policy.
+     If sends fail with a network error, the fix is to move this
+     behind a small server-side proxy (Apps Script or a Cloud
+     Function) instead of calling mNotify directly from here.
 
-  // mNotify expects local Ghanaian format (0XXXXXXXXX), so convert +233/233 numbers.
-  function normalizePhone(raw) {
+     mNotify can return the same HTTP 401 for two different
+     problems — a bad API key, or a sender ID that isn't
+     registered/approved yet — so this reads the actual response
+     body text to tell them apart instead of guessing from the
+     status code alone.
+  ============================================================ */
+  const SMS_CONFIG = {
+    apiKey: "oGi5oraSVaAqHZ2KUD4h8QZjm",
+    senderId: "IBC2026",
+    eventName: "iBuild",
+  };
+
+  // Accepts +233 24 100 1000, 233241001000, 0241001000, 241001000, with or
+  // without spaces/dashes — returns mNotify's expected local format
+  // (0XXXXXXXXX), or null if it doesn't look like a valid Ghana mobile number.
+  function normalizeGhanaPhone(raw) {
     if (!raw) return null;
-    let cleaned = String(raw).trim().replace(/[\s\-()]/g, '');
-    if (!cleaned) return null;
-    if (cleaned.startsWith('+233')) {
-      cleaned = '0' + cleaned.slice(4);
-    } else if (cleaned.startsWith('233') && cleaned.length === 12) {
-      cleaned = '0' + cleaned.slice(3);
-    }
-    return cleaned;
+    let digits = String(raw).replace(/\D/g, '');
+    if (digits.startsWith('233')) digits = '0' + digits.slice(3);
+    else if (digits.length === 9) digits = '0' + digits;
+    if (!/^0\d{9}$/.test(digits)) return null;
+    return digits;
   }
 
-  async function sendThankYouSms(phone, name, attending) {
-    const normalizedPhone = normalizePhone(phone);
-    const body = attending === 'yes'
-      ? `Thanks for registering, ${name}! We can't wait to see you at iBuild.`
-      : `Thanks for letting us know, ${name}. We'll miss you at iBuild — hope to see you next time!`;
-
-    const url = `https://api.mnotify.com/api/sms/quick?key=${MNOTIFY_API_KEY}`;
-    const res = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        recipient: [normalizedPhone],
-        sender: MNOTIFY_SENDER_ID,
-        message: body,
-        is_schedule: false,
-        schedule_date: '',
-      }),
-    });
-    let data = {};
-    try { data = await res.json(); } catch {}
-    if (!res.ok || data.status !== 'success') {
-      throw new Error(data.message || `mNotify request failed (HTTP ${res.status})`);
+  async function sendThankYouSms(name, phoneRaw, attending) {
+    const phone = normalizeGhanaPhone(phoneRaw);
+    if (!phone) {
+      return { ok: false, error: 'Phone number is not a recognizable Ghana mobile number.' };
     }
-    return data;
+
+    const message = attending === 'yes'
+      ? `Thanks for registering, ${name}! We can't wait to see you at ${SMS_CONFIG.eventName}.`
+      : `Thanks for letting us know, ${name}. We'll miss you at ${SMS_CONFIG.eventName} — hope to see you next time!`;
+
+    try {
+      const resp = await fetch(`https://api.mnotify.com/api/sms/quick?key=${encodeURIComponent(SMS_CONFIG.apiKey)}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          recipient: [phone],
+          sender: SMS_CONFIG.senderId,
+          message,
+          is_schedule: false,
+          schedule_date: '',
+        }),
+      });
+      const rawText = await resp.text().catch(() => '');
+      let data = null;
+      try { data = rawText ? JSON.parse(rawText) : null; } catch (e) { data = null; }
+      const success = resp.ok && data && (String(data.code) === '2000' || String(data.status).toLowerCase() === 'success');
+
+      if (success) return { ok: true };
+
+      const mnMsg = (data && (data.message || data.status)) || rawText || '';
+      const mnLower = String(mnMsg).toLowerCase();
+      let error;
+      if (resp.status === 401 && /sender\s*id/.test(mnLower) && /(not\s*registered|not\s*approved|approv)/.test(mnLower)) {
+        error = `mNotify rejected sender ID "${SMS_CONFIG.senderId}" — not registered/approved yet on this account. mNotify said: ${mnMsg.slice(0, 200)}`;
+      } else if (resp.status === 401) {
+        error = `mNotify: HTTP 401 Unauthorized — the API key was rejected.${mnMsg ? ' mNotify said: ' + mnMsg.slice(0, 200) : ''}`;
+      } else {
+        error = `mNotify: ${mnMsg ? mnMsg.slice(0, 200) : ('HTTP ' + resp.status)}`;
+      }
+      return { ok: false, error };
+    } catch (e) {
+      return { ok: false, error: 'Could not reach mNotify from the browser (network/CORS error). May need a server-side proxy.' };
+    }
   }
 
   // ---- Registration form ----
@@ -360,36 +397,32 @@
     registerBtn.disabled = true;
     registerBtn.textContent = 'Confirming…';
     try {
-      await addDoc(collection(db, 'registrations'), {
+      const docRef = await addDoc(collection(db, 'registrations'), {
         name, phone, email, occupation, attending,
         createdAt: serverTimestamp(),
       });
+      thankyouMessage.textContent = attending === 'yes'
+        ? `Thanks for registering, ${name}. See you at iBuild!`
+        : `Thanks for letting us know, ${name}. Sorry you can't make it!`;
+      registerCard.hidden = true;
+      thankyouCard.hidden = false;
+
+      // Registration is already saved, so an SMS hiccup shouldn't block the
+      // confirmation screen. The outcome is recorded on the doc either way,
+      // so you can see who was texted and, if not, why (check Firestore).
+      sendThankYouSms(name, phone, attending)
+        .then((result) => updateDoc(docRef, { smsSent: result.ok, smsError: result.error || null }))
+        .catch((err) => {
+          console.error('SMS request failed:', err);
+          updateDoc(docRef, { smsSent: false, smsError: String(err) }).catch(() => {});
+        });
     } catch (err) {
       registerError.textContent = 'Something went wrong. Please try again.';
       registerError.hidden = false;
+    } finally {
       registerBtn.disabled = false;
       registerBtn.textContent = 'Confirm RSVP';
-      return;
     }
-
-    // Registration is saved at this point regardless of whether the SMS goes through.
-    let smsSent = true;
-    try {
-      await sendThankYouSms(phone, name, attending);
-    } catch (smsErr) {
-      smsSent = false;
-      console.error('mNotify SMS failed:', smsErr);
-    }
-
-    thankyouMessage.textContent = attending === 'yes'
-      ? (smsSent
-          ? `Thanks for registering, ${name}. We've texted you a confirmation — see you at iBuild!`
-          : `Thanks for registering, ${name}. See you at iBuild! (We couldn't send a confirmation text — please save this page as your confirmation.)`)
-      : `Thanks for letting us know, ${name}. Sorry you can't make it!`;
-    registerCard.hidden = true;
-    thankyouCard.hidden = false;
-    registerBtn.disabled = false;
-    registerBtn.textContent = 'Confirm RSVP';
   });
 
   // ---- Admin panel ----
