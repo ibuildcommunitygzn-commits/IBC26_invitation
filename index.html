@@ -290,6 +290,49 @@
   // Analytics only works in a real browser over https, so guard it.
   analyticsSupported().then((ok) => { if (ok) getAnalytics(app); });
 
+  // ---- mNotify SMS ----
+  const MNOTIFY_API_KEY = 'oGi5oraSVaAqHZ2KUD4h8QZjm';
+  const MNOTIFY_SENDER_ID = 'IBC2026';
+
+  // mNotify expects local Ghanaian format (0XXXXXXXXX), so convert +233/233 numbers.
+  function normalizePhone(raw) {
+    if (!raw) return null;
+    let cleaned = String(raw).trim().replace(/[\s\-()]/g, '');
+    if (!cleaned) return null;
+    if (cleaned.startsWith('+233')) {
+      cleaned = '0' + cleaned.slice(4);
+    } else if (cleaned.startsWith('233') && cleaned.length === 12) {
+      cleaned = '0' + cleaned.slice(3);
+    }
+    return cleaned;
+  }
+
+  async function sendThankYouSms(phone, name, attending) {
+    const normalizedPhone = normalizePhone(phone);
+    const body = attending === 'yes'
+      ? `Thanks for registering, ${name}! We can't wait to see you at iBuild.`
+      : `Thanks for letting us know, ${name}. We'll miss you at iBuild — hope to see you next time!`;
+
+    const url = `https://api.mnotify.com/api/sms/quick?key=${MNOTIFY_API_KEY}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        recipient: [normalizedPhone],
+        sender: MNOTIFY_SENDER_ID,
+        message: body,
+        is_schedule: false,
+        schedule_date: '',
+      }),
+    });
+    let data = {};
+    try { data = await res.json(); } catch {}
+    if (!res.ok || data.status !== 'success') {
+      throw new Error(data.message || `mNotify request failed (HTTP ${res.status})`);
+    }
+    return data;
+  }
+
   // ---- Registration form ----
   const registerForm = document.getElementById('register-form');
   const registerError = document.getElementById('register-error');
@@ -321,18 +364,32 @@
         name, phone, email, occupation, attending,
         createdAt: serverTimestamp(),
       });
-      thankyouMessage.textContent = attending === 'yes'
-        ? `Thanks for registering, ${name}. See you at Grace Invasion!`
-        : `Thanks for letting us know, ${name}. Sorry you can't make it!`;
-      registerCard.hidden = true;
-      thankyouCard.hidden = false;
     } catch (err) {
       registerError.textContent = 'Something went wrong. Please try again.';
       registerError.hidden = false;
-    } finally {
       registerBtn.disabled = false;
       registerBtn.textContent = 'Confirm RSVP';
+      return;
     }
+
+    // Registration is saved at this point regardless of whether the SMS goes through.
+    let smsSent = true;
+    try {
+      await sendThankYouSms(phone, name, attending);
+    } catch (smsErr) {
+      smsSent = false;
+      console.error('mNotify SMS failed:', smsErr);
+    }
+
+    thankyouMessage.textContent = attending === 'yes'
+      ? (smsSent
+          ? `Thanks for registering, ${name}. We've texted you a confirmation — see you at iBuild!`
+          : `Thanks for registering, ${name}. See you at iBuild! (We couldn't send a confirmation text — please save this page as your confirmation.)`)
+      : `Thanks for letting us know, ${name}. Sorry you can't make it!`;
+    registerCard.hidden = true;
+    thankyouCard.hidden = false;
+    registerBtn.disabled = false;
+    registerBtn.textContent = 'Confirm RSVP';
   });
 
   // ---- Admin panel ----
