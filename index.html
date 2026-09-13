@@ -267,7 +267,7 @@
   import { initializeApp } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-app.js";
   import { getAnalytics, isSupported as analyticsSupported } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-analytics.js";
   import {
-    getFirestore, collection, addDoc, updateDoc, getDocs, serverTimestamp,
+    getFirestore, collection, addDoc, getDocs, serverTimestamp,
   } from "https://www.gstatic.com/firebasejs/10.13.0/firebase-firestore.js";
   import {
     getAuth, signInWithEmailAndPassword, onAuthStateChanged, signOut,
@@ -397,25 +397,24 @@
     registerBtn.disabled = true;
     registerBtn.textContent = 'Confirming…';
     try {
-      const docRef = await addDoc(collection(db, 'registrations'), {
+      // Send the SMS first so its outcome can be saved in the SAME create
+      // call as the registration — a follow-up update() after the fact was
+      // silently failing, almost certainly blocked by Firestore's security
+      // rules (anonymous visitors typically get create but not update).
+      const smsResult = await sendThankYouSms(name, phone, attending);
+
+      await addDoc(collection(db, 'registrations'), {
         name, phone, email, occupation, attending,
         createdAt: serverTimestamp(),
+        smsSent: smsResult.ok,
+        smsError: smsResult.error || null,
       });
+
       thankyouMessage.textContent = attending === 'yes'
         ? `Thanks for registering, ${name}. See you at iBuild!`
         : `Thanks for letting us know, ${name}. Sorry you can't make it!`;
       registerCard.hidden = true;
       thankyouCard.hidden = false;
-
-      // Registration is already saved, so an SMS hiccup shouldn't block the
-      // confirmation screen. The outcome is recorded on the doc either way,
-      // so you can see who was texted and, if not, why (check Firestore).
-      sendThankYouSms(name, phone, attending)
-        .then((result) => updateDoc(docRef, { smsSent: result.ok, smsError: result.error || null }))
-        .catch((err) => {
-          console.error('SMS request failed:', err);
-          updateDoc(docRef, { smsSent: false, smsError: String(err) }).catch(() => {});
-        });
     } catch (err) {
       registerError.textContent = 'Something went wrong. Please try again.';
       registerError.hidden = false;
