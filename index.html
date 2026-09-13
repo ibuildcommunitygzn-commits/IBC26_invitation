@@ -291,82 +291,35 @@
   analyticsSupported().then((ok) => { if (ok) getAnalytics(app); });
 
   /* ============================================================
-     SMS — thank-you text via mNotify
+     SMS — thank-you text via mNotify, sent server-side
      ------------------------------------------------------------
-     Called directly from the browser, same as Clyde Academy's fee
-     SMS. NOTE: this means the API key is visible to anyone who
-     views this page's source, and mNotify's API may reject direct
-     browser requests (CORS/WAF) depending on their current policy.
-     If sends fail with a network error, the fix is to move this
-     behind a small server-side proxy (Apps Script or a Cloud
-     Function) instead of calling mNotify directly from here.
-
-     mNotify can return the same HTTP 401 for two different
-     problems — a bad API key, or a sender ID that isn't
-     registered/approved yet — so this reads the actual response
-     body text to tell them apart instead of guessing from the
-     status code alone.
+     mNotify's API consistently rejects requests made directly
+     from a browser (confirmed: HTTP 419 on every attempt, not a
+     CORS error — meaning their firewall specifically detects and
+     blocks browser-originated calls). So this page calls a small
+     Google Apps Script Web App instead, which calls mNotify
+     server-side. See apps_script_code.gs for that script — deploy
+     it as a Web App and paste the resulting URL below.
   ============================================================ */
-  const SMS_CONFIG = {
-    apiKey: "oGi5oraSVaAqHZ2KUD4h8QZjm",
-    senderId: "IBC2026",
-    eventName: "iBuild",
-  };
+  const SMS_PROXY_URL = 'PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE'; // ends in /exec
+  const SMS_PROXY_TOKEN = 'ibc26-please-change-this'; // must match SHARED_TOKEN in apps_script_code.gs
 
-  // Accepts +233 24 100 1000, 233241001000, 0241001000, 241001000, with or
-  // without spaces/dashes — returns mNotify's expected local format
-  // (0XXXXXXXXX), or null if it doesn't look like a valid Ghana mobile number.
-  function normalizeGhanaPhone(raw) {
-    if (!raw) return null;
-    let digits = String(raw).replace(/\D/g, '');
-    if (digits.startsWith('233')) digits = '0' + digits.slice(3);
-    else if (digits.length === 9) digits = '0' + digits;
-    if (!/^0\d{9}$/.test(digits)) return null;
-    return digits;
-  }
-
-  async function sendThankYouSms(name, phoneRaw, attending) {
-    const phone = normalizeGhanaPhone(phoneRaw);
-    if (!phone) {
-      return { ok: false, error: 'Phone number is not a recognizable Ghana mobile number.' };
-    }
-
-    const message = attending === 'yes'
-      ? `Thanks for registering, ${name}! We can't wait to see you at ${SMS_CONFIG.eventName}.`
-      : `Thanks for letting us know, ${name}. We'll miss you at ${SMS_CONFIG.eventName} — hope to see you next time!`;
-
+  async function sendThankYouSms(name, phone, attending) {
     try {
-      const resp = await fetch(`https://api.mnotify.com/api/sms/quick?key=${encodeURIComponent(SMS_CONFIG.apiKey)}`, {
+      const resp = await fetch(SMS_PROXY_URL, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          recipient: [phone],
-          sender: SMS_CONFIG.senderId,
-          message,
-          is_schedule: false,
-          schedule_date: '',
-        }),
+        headers: { 'Content-Type': 'text/plain' }, // avoids an extra CORS preflight to Apps Script
+        body: JSON.stringify({ name, phone, attending, token: SMS_PROXY_TOKEN }),
       });
       const rawText = await resp.text().catch(() => '');
       let data = null;
       try { data = rawText ? JSON.parse(rawText) : null; } catch (e) { data = null; }
-      const success = resp.ok && data && (String(data.code) === '2000' || String(data.status).toLowerCase() === 'success');
 
-      if (success) return { ok: true };
-
-      const mnMsg = (data && (data.message || data.status)) || rawText || '';
-      const mnLower = String(mnMsg).toLowerCase();
-      let error;
-      if (resp.status === 401 && /sender\s*id/.test(mnLower) && /(not\s*registered|not\s*approved|approv)/.test(mnLower)) {
-        error = `mNotify rejected sender ID "${SMS_CONFIG.senderId}" — not registered/approved yet on this account. mNotify said: ${mnMsg.slice(0, 200)}`;
-      } else if (resp.status === 401) {
-        error = `mNotify: HTTP 401 Unauthorized — the API key was rejected.${mnMsg ? ' mNotify said: ' + mnMsg.slice(0, 200) : ''}`;
-      } else {
-        error = `mNotify: ${mnMsg ? mnMsg.slice(0, 200) : ('HTTP ' + resp.status)}`;
-      }
-      return { ok: false, error };
+      if (data && data.ok) return { ok: true };
+      const errMsg = (data && (data.error || JSON.stringify(data.mnotify))) || rawText || `HTTP ${resp.status}`;
+      return { ok: false, error: `SMS proxy: ${String(errMsg).slice(0, 300)}` };
     } catch (e) {
-      return { ok: false, error: 'Could not reach mNotify from the browser (network/CORS error). May need a server-side proxy.' };
+      return { ok: false, error: `Could not reach the SMS proxy: ${String(e)}` };
     }
   }
 
@@ -377,6 +330,7 @@
   const registerCard = document.getElementById('register-card');
   const thankyouCard = document.getElementById('thankyou-card');
   const thankyouMessage = document.getElementById('thankyou-message');
+
 
   registerForm.addEventListener('submit', async (e) => {
     e.preventDefault();
